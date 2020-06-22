@@ -12,11 +12,18 @@ void frag_generate_valid_data_map(uint8_t *map, int len, float r);
 int flash_write(uint32_t addr, uint8_t *buf, uint32_t len);
 int flash_read(uint32_t addr, uint8_t *buf, uint32_t len);
 
-#define FRAG_NB                 (10)
-#define FRAG_SIZE               (10)
-#define FRAG_CR                 (FRAG_NB + 10)
+
+/* brief::
+M == The  initial  data  block  that  needs  to  be  transported  must
+     first  be  fragmented  into  M  data 417fragments  of arbitrary  but  equal  length
+N == bytes to be sent
+*/
+#define FRAG_NB                 (10) // data block will be divided into 10 fragments
+#define FRAG_SIZE               (10) // each fragment size will be 10 bytes
+// thus data block size is 10 * 10 == 100
+#define FRAG_CR                 (FRAG_NB + 10) // basicalyy M/N
 #define FRAG_TOLERENCE          (10 + FRAG_NB * (FRAG_PER + 0.05))
-#define FRAG_PER                (0.2)
+#define FRAG_PER                (0.2) // changes the lost packet count
 #define LOOP_TIMES              (1)
 
 frag_enc_t encobj;
@@ -82,8 +89,9 @@ int process()
     }
 #else
     for (i = 0; i < (encobj.num+1); i++) {
+        printf("trying to decode %d index\n", i);
         if (dynamic_valid_data_map[i] == 1) {
-            //printf("Index %d lost\n", i);
+            printf("Index %d lost\n", i);
             continue;
         }
         ret = frag_dec(&decobj, i + 1, encobj.line + i * decobj.cfg.size, decobj.cfg.size);
@@ -98,8 +106,8 @@ int process()
         }
     }
     for (i = 0; i < (encobj.num); i++) {
-        if (dynamic_valid_data_map[i] == 0) {
-            //printf("Index %d lost\n", i);
+        if (dynamic_valid_data_map[i] == 1) {
+            printf("Index %d lost\n", i);
             continue;
         }
         ret = frag_dec(&decobj, i + 1, encobj.line + i * decobj.cfg.size, decobj.cfg.size);
@@ -118,7 +126,7 @@ int process()
 
 
 
-#if 1
+#if 0
     frag_dec_log(&decobj);
 #endif
     if (memcmp(dec_flash_buf, enc_dt, FRAG_NB * FRAG_SIZE) == 0) {
@@ -192,7 +200,7 @@ void put_bool_buf(uint8_t *buf, int len)
 
 void frag_encobj_log(frag_enc_t *encobj)
 {
-#if 0
+
     int i;
 
     printf("uncoded blocks:\n");
@@ -209,7 +217,6 @@ void frag_encobj_log(frag_enc_t *encobj)
     for (i = 0; i < encobj->num * encobj->cr; i += encobj->num) {
         put_bool_buf(encobj->mline + i, encobj->num);
     }
-#endif
 }
 
 void frag_generate_valid_data_map(uint8_t *map, int len, float r)
@@ -217,6 +224,7 @@ void frag_generate_valid_data_map(uint8_t *map, int len, float r)
     int lost, index;
 
     lost = (int)(len * r);
+    printf("lost is %d\n", lost);
     memset(map, 0, len);
     while (lost--) {
         while (1) {
