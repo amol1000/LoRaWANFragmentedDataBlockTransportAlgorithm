@@ -21,9 +21,9 @@ N == bytes to be sent
 #define FRAG_NB                 (10) // data block will be divided into 10 fragments
 #define FRAG_SIZE               (10) // each fragment size will be 10 bytes
 // thus data block size is 10 * 10 == 100
-#define FRAG_CR                 (FRAG_NB + 10) // basicalyy M/N
+#define FRAG_CR                 (FRAG_NB + 10) // basically M/N
 #define FRAG_TOLERENCE          (10 + FRAG_NB * (FRAG_PER + 0.05))
-#define FRAG_PER                (0.2) // changes the lost packet count
+#define FRAG_PER                (0.3) // changes the lost packet count
 #define LOOP_TIMES              (1)
 
 frag_enc_t encobj;

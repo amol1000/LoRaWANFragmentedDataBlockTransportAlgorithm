@@ -11,6 +11,8 @@ static bool is_power2(uint32_t num)
 	return (num != 0) && ((num & (num-1)) == 0);
 }
 
+/* @brief: a 23 PRNG
+ with a periof of 2 ^23 */
 static uint32_t prbs23(uint32_t x)
 {
     uint32_t b0, b1;
@@ -20,6 +22,7 @@ static uint32_t prbs23(uint32_t x)
 }
 
 /*
+ @brief: returns line n of parity check matrix MxM
 n: FragIndex
 m: NubFrag
 buf: length is greater than m
@@ -28,27 +31,31 @@ static int matrix_line(uint8_t *buf, int n, int m)
 {
     int mm, x, nbCoeff, r;
 
+    /* Power of 2 tend to generate patterns so we make mm as 1 so that it is
+       as random as possible */
     mm = 0;
     if (is_power2(m)) {
         mm = 1;
     }
     mm += m;
 
-    x = 1 + (1001 * n);
+    x = 1 + (1001 * n);// just so that each line n has a randomly generated seed
 
+    /* following loop generates a matrix line with m/2 bits set */
     for (nbCoeff = 0; nbCoeff < (m/2); nbCoeff++) {
         r = (1 << 16);
         while (r >= m) {
-            x = prbs23(x);
+            x = prbs23(x);//generate random number till r fits in the matrix range
             r = x % mm;
         }
-        buf[r] = 1;
+        buf[r] = 1;//set a random bit
     }
 
     return 0;
 }
-
-// n: index of the uncoded and coded fragmentations, maximum N - 1, starts from 0
+/*
+ n: index of the uncoded and coded fragmentations, maximum N - 1, starts from 0
+ */
 static int matrix_line_bm(bm_t *bm, int n, int m)
 {
     int mm, x, nbCoeff, r;
@@ -123,9 +130,12 @@ int frag_enc(frag_enc_t *obj, uint8_t *buf, int len, int unit, int cr)
     memcpy(obj->dt + 0, buf, len);
     mline = obj->mline;
     rline = obj->rline;
+    bzero(rline, cr*unit); // should use memset?
     for (i = 0; i < cr; i++, mline += num, rline += unit) {
+        // generate matrix line i+1 for matrix size num x num
         matrix_line(mline, i + 1, num);
         for (j = 0; j < num; j++) {
+        // perform a bitwise Xor operation between all the uncoded fragments corresponding to 1
             if (mline[j] == 1) {
                 for (k = 0; k < unit; k++) {
                     rline[k] ^= buf[j * unit + k];
