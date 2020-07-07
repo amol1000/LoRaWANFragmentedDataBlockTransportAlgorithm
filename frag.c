@@ -114,6 +114,7 @@ int frag_enc(frag_enc_t *obj, uint8_t *buf, int len, int unit, int cr)
     }
 
     num = len / unit;
+    printf("num is %d, unit is %d, len is %d\n", num, unit, len);
     maxlen = len + cr * unit + num * cr;
     if (maxlen > obj->maxlen) {
         FRAGLOG("maxlen: %d, input buffer: %d", maxlen, obj->maxlen);
@@ -143,6 +144,7 @@ int frag_enc(frag_enc_t *obj, uint8_t *buf, int len, int unit, int cr)
             }
         }
     }
+    printf("addr of rline:: %x\n", obj->dt + len);
     return 0;
 }
 

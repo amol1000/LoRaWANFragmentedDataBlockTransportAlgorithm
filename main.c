@@ -21,14 +21,15 @@ N == bytes to be sent
 #define FRAG_NB                 (10) // data block will be divided into 10 fragments
 #define FRAG_SIZE               (10) // each fragment size will be 10 bytes
 // thus data block size is 10 * 10 == 100
-#define FRAG_CR                 (FRAG_NB + 10) // basically M/N
-#define FRAG_TOLERENCE          (10 + FRAG_NB * (FRAG_PER + 0.05))
+#define FRAG_CR                 (FRAG_NB + 0 - 6) // basically M/N
 #define FRAG_PER                (0.3) // changes the lost packet count
+#define FRAG_TOLERENCE          (10 + FRAG_NB * (FRAG_PER + 0.05))//0.05
 #define LOOP_TIMES              (1)
+#define DEBUG
 
 frag_enc_t encobj;
-uint8_t enc_dt[FRAG_NB * FRAG_SIZE];
-uint8_t enc_buf[FRAG_NB * FRAG_SIZE + FRAG_CR * FRAG_SIZE + FRAG_NB * FRAG_CR];
+uint8_t enc_dt[FRAG_NB * FRAG_SIZE]; // 100 bytes
+uint8_t enc_buf[FRAG_NB * FRAG_SIZE + FRAG_CR * FRAG_SIZE + FRAG_NB * FRAG_CR]; // //100 + 20 * 10 + 20 * 10 == 500 bytes
 
 frag_dec_t decobj;
 uint8_t dec_buf[(FRAG_NB + FRAG_CR) * FRAG_SIZE + 1024*1024];
@@ -70,12 +71,17 @@ int process()
            decobj.cfg.size,
            decobj.cfg.tolerence);
 
+    printf("encobj.line addr : %x\n", encobj.line);
+    printf("decobj cfg size is %d\n", decobj.cfg.size);
+    printf("encobj.num is : %d & encobj.cr is %d\n", encobj.num, encobj.cr );
+    printf("last data dec can access is at addr %x\n", encobj.line + ((encobj.num + encobj.cr) - 1) * decobj.cfg.size);
 #if 1
     for (i = 0; i < (encobj.num + encobj.cr); i++) {
         if (dynamic_valid_data_map[i] == 1) {
-            //printf("Index %d lost\n", i);
+            printf("Index %d lost, addr would have been %x \n", i, encobj.line + i * decobj.cfg.size);
             continue;
         }
+        printf(" addr access is :: %x\n",encobj.line + i * decobj.cfg.size );
         ret = frag_dec(&decobj, i + 1, encobj.line + i * decobj.cfg.size, decobj.cfg.size);
         if (ret == FRAG_DEC_ONGOING) {
             //printf("\n");
@@ -126,7 +132,7 @@ int process()
 
 
 
-#if 0
+#if 1
     frag_dec_log(&decobj);
 #endif
     if (memcmp(dec_flash_buf, enc_dt, FRAG_NB * FRAG_SIZE) == 0) {
@@ -203,16 +209,21 @@ void frag_encobj_log(frag_enc_t *encobj)
 
     int i;
 
+    printf("addr of uncoded blocks : %x\n", encobj->line);
     printf("uncoded blocks:\n");
     for (i = 0; i < encobj->num * encobj->unit; i += encobj->unit) {
+        printf(" %x:\t", encobj->line + i);
         putbuf(encobj->line + i, encobj->unit);
     }
 
-    printf("\ncoded blocks:\n");
+    printf("\naddr of coded blocks : %x\n", encobj->rline);
+    printf("coded blocks:\n");
     for (i = 0; i < encobj->cr * encobj->unit; i += encobj->unit) {
+        printf(" %x:\t", encobj->rline + i);
         putbuf(encobj->rline + i, encobj->unit);
     }
 
+    printf("\n addr of mline blocks : %x\n", encobj->mline);
     printf("\nmatrix line:\n");
     for (i = 0; i < encobj->num * encobj->cr; i += encobj->num) {
         put_bool_buf(encobj->mline + i, encobj->num);
@@ -224,6 +235,8 @@ void frag_generate_valid_data_map(uint8_t *map, int len, float r)
     int lost, index;
 
     lost = (int)(len * r);
+    printf("len is %d\n", len);
+    printf("r is %f\n", r);
     printf("lost is %d\n", lost);
     memset(map, 0, len);
     while (lost--) {
