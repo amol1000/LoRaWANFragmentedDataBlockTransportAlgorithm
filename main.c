@@ -19,16 +19,16 @@ M == The  initial  data  block  that  needs  to  be  transported  must
 N == bytes to be sent
 */
 #define FRAG_NB                 (10) // data block will be divided into 10 fragments
-#define FRAG_SIZE               (10) // each fragment size will be 10 bytes
+#define FRAG_SIZE               (30) // each fragment size will be 10 bytes
 // thus data block size is 10 * 10 == 100
-#define FRAG_CR                 (FRAG_NB + 0 - 6) // basically M/N
-#define FRAG_PER                (0.3) // changes the lost packet count
+#define FRAG_CR                 (FRAG_NB - 6) // basically M/N
+#define FRAG_PER                (0.25) // changes the lost packet count
 #define FRAG_TOLERENCE          (10 + FRAG_NB * (FRAG_PER + 0.05))//0.05
 #define LOOP_TIMES              (1)
 #define DEBUG
 
 frag_enc_t encobj;
-uint8_t enc_dt[FRAG_NB * FRAG_SIZE]; // 100 bytes
+//uint8_t enc_dt[FRAG_NB * FRAG_SIZE]; // 100 bytes
 uint8_t enc_buf[FRAG_NB * FRAG_SIZE + FRAG_CR * FRAG_SIZE + FRAG_NB * FRAG_CR]; // //100 + 20 * 10 + 20 * 10 == 500 bytes
 
 frag_dec_t decobj;
@@ -44,12 +44,12 @@ int process()
     srand(0);
 
     for (i = 0; i < FRAG_NB * FRAG_SIZE; i++) {
-        enc_dt[i] = i;
+        enc_buf[i] = i;
     }
 
     encobj.dt = enc_buf;
     encobj.maxlen = sizeof(enc_buf);
-    ret = frag_enc(&encobj, enc_dt, FRAG_NB * FRAG_SIZE, FRAG_SIZE, FRAG_CR);
+    ret = frag_enc(&encobj, enc_buf, FRAG_NB * FRAG_SIZE, FRAG_SIZE, FRAG_CR);
     printf("enc ret %d, maxlen %d\n", ret, encobj.maxlen);
     frag_encobj_log(&encobj);
 
@@ -135,7 +135,7 @@ int process()
 #if 1
     frag_dec_log(&decobj);
 #endif
-    if (memcmp(dec_flash_buf, enc_dt, FRAG_NB * FRAG_SIZE) == 0) {
+    if (memcmp(dec_flash_buf, enc_buf, FRAG_NB * FRAG_SIZE) == 0) {
         printf("decode ok (lost: %d)\n", decobj.lost_frm_count);
     } else {
         printf("decode ng (lost: %d)\n", decobj.lost_frm_count);
